@@ -700,8 +700,13 @@ function PopulateList(data, listMode, listIM)
 			end
 			districtListing.Button:SetDisabled(item.Disabled);
 			districtListing.Button:RegisterCallback( Mouse.eLClick, function()
-				nextDistrictSkipToFront = false;
-				QueueDistrict(data.City, item);
+				if(m_isCONTROLpressed) then
+					nextDistrictSkipToFront = true;
+				else
+					nextDistrictSkipToFront = false;
+				end
+
+				QueueDistrict(data.City, item, nextDistrictSkipToFront);
 			end);
 
 			districtListing.Button:RegisterCallback( Mouse.eMClick, function()
@@ -1035,6 +1040,12 @@ function PopulateList(data, listMode, listIM)
 				queueListing.Button:RegisterCallback( Mouse.eLDblClick, function()
 					MoveQueueIndex(cityID, i, 1);
 					BuildFirstQueued(selectedCity);
+				end);
+
+				queueListing.Button:RegisterCallback( Mouse.eMClick, function()
+					MoveQueueIndex(cityID, i, 1);
+					BuildFirstQueued(selectedCity);
+					RecenterCameraToSelectedCity();
 				end);
 
 				queueListing.Draggable:RegisterCallback( Drag.eDown, function(dragStruct) OnDownInQueue(dragStruct, queueListing, i); end );
@@ -3402,4 +3413,3 @@ function Initialize()
 	Events.CityProductionCompleted.Add(OnCityProductionCompleted);
 end
 Initialize();
-

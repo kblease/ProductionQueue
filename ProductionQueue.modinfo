@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Mod id="2027E5A2-A48D-E606-031F-141E1196975A" version="0.1">
+	<Properties>
+		<Name>Production Queue</Name>
+		<Description>Adds production queues to cities.</Description>
+		<Teaser>Add production queues to cities.</Teaser>
+		<Authors>Lozenged</Authors>
+	</Properties>
+    <Components>
+        <ImportFiles id="PRODUCTION_QUEUE_IMPORT_FILES">
+            <Items>
+				<File>UI/Panels/ProductionPanel.lua</File>
+				<File>UI/ProductionPanel.xml</File>
+				<File>UI/StrategicView_MapPlacement.lua</File>
+				<File>UI/SupportFunctions.lua</File>
+            </Items>
+        </ImportFiles>
+    </Components>
+	<Files>
+		<File>UI/Panels/ProductionPanel.lua</File>
+		<File>UI/ProductionPanel.xml</File>
+		<File>UI/StrategicView_MapPlacement.lua</File>
+		<File>UI/SupportFunctions.lua</File>
+	</Files>
+</Mod>

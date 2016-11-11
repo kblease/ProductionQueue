@@ -221,7 +221,7 @@ end
 
 -- ===========================================================================
 function BuildBuilding(city, buildingEntry)
-	local building			:table		= GameInfo.Buildings[buildingEntry.Type];
+	local building			:table		= GameInfo.Buildings[buildingEntry.Hash];
 	local bNeedsPlacement	:boolean	= building.RequiresPlacement;
 
 	UI.SetInterfaceMode(InterfaceModeTypes.SELECTION);
@@ -231,7 +231,13 @@ function BuildBuilding(city, buildingEntry)
 		bNeedsPlacement = false;
 	end
 
-	if ( not bNeedsPlacement ) then
+	if ( bNeedsPlacement ) then
+		-- If so, set the placement mode
+		local tParameters = {};
+		tParameters[CityOperationTypes.PARAM_BUILDING_TYPE] = buildingEntry.Hash;
+		tParameters[CityOperationTypes.PARAM_INSERT_MODE] = CityOperationTypes.VALUE_EXCLUSIVE;
+		UI.SetInterfaceMode(InterfaceModeTypes.BUILDING_PLACEMENT, tParameters);
+	else
 		local tParameters = {};
 		tParameters[CityOperationTypes.PARAM_BUILDING_TYPE] = buildingEntry.Hash;
 		tParameters[CityOperationTypes.PARAM_INSERT_MODE] = CityOperationTypes.VALUE_EXCLUSIVE;
@@ -242,7 +248,7 @@ end
 -- ===========================================================================
 function ZoneDistrict(city, districtEntry)
 
-	local district			:table		= GameInfo.Districts[districtEntry.Type];
+	local district			:table		= GameInfo.Districts[districtEntry.Hash];
 	local bNeedsPlacement	:boolean	= district.RequiresPlacement;
 	local pBuildQueue		:table		= city:GetBuildQueue();
 
@@ -2575,6 +2581,7 @@ end
 --  Note: This seems to sometimes fire more than once for a turn
 --- ===========================================================================
 function OnCityProductionCompleted(playerID, cityID, orderType, unitType, canceled, typeModifier)
+
 	if (playerID ~= Game.GetLocalPlayer()) then return end;
 
 	local pPlayer = Players[ playerID ];
@@ -2584,9 +2591,6 @@ function OnCityProductionCompleted(playerID, cityID, orderType, unitType, cancel
 	if (pCity == nil) then return end;
 
 	local currentTurn = Game.GetCurrentGameTurn();
-
-	local completedThing = "";
-	if(prodQueue[cityID][1]) then completedThing = prodQueue[cityID][1].entry.Name; end
 
 	-- Only one item can be produced per turn per city
 	if(lastProductionCompletePerCity[cityID] and lastProductionCompletePerCity[cityID] == currentTurn) then
@@ -3071,7 +3075,15 @@ function BuildFirstQueued(pCity)
 		elseif(prodQueue[cityID][1].type == PRODUCTION_TYPE.CORPS) then
 			BuildUnitCorps(pCity, prodQueue[cityID][1].entry);
 		elseif(prodQueue[cityID][1].type == PRODUCTION_TYPE.PLACED) then
-			BuildPlaced(pCity, prodQueue[cityID][1].tParameters);
+			if(not prodQueue[cityID][1].tParameters) then
+				if(GameInfo.Buildings[prodQueue[cityID][1].entry.Hash]) then
+					BuildBuilding(pCity, prodQueue[cityID][1].entry);
+				else
+					ZoneDistrict(pCity, prodQueue[cityID][1].entry);
+				end
+			else
+				BuildPlaced(pCity, prodQueue[cityID][1].tParameters);
+			end
 		elseif(prodQueue[cityID][1].type == PRODUCTION_TYPE.PROJECT) then
 			AdvanceProject(pCity, prodQueue[cityID][1].entry);
 		end
@@ -3199,6 +3211,7 @@ function CheckAndReplaceQueueForUpgrades(city)
 	local pCulture = pPlayer:GetCulture();
 	local buildQueue = city:GetBuildQueue();
 	local cityID = city:GetID();
+	local pBuildings = city:GetBuildings();
 	local civTypeName = PlayerConfigurations[playerID]:GetCivilizationTypeName();
 	local removeUnits = {};
 
@@ -3291,12 +3304,23 @@ function CheckAndReplaceQueueForUpgrades(city)
 					end
 				end
 			end
+		elseif(qi.type == PRODUCTION_TYPE.BUILDING or qi.type == PRODUCTION_TYPE.PLACED) then
+			if(qi.entry.Repair == true and GameInfo.Buildings[qi.entry.Hash]) then
+				local isPillaged = pBuildings:IsPillaged(GameInfo.Buildings[qi.entry.Hash].Index);
+				if(not isPillaged) then
+					-- Repair complete, remove from queue
+					table.insert(removeUnits, i);
+				end
+			end
 		end
 	end
 
 	if(#removeUnits > 0) then
 		for i=#removeUnits, 1, -1 do
 			RemoveFromQueue(cityID, removeUnits[i]);
+			if(removeUnits[i] == 1) then
+				BuildFirstQueued(city);
+			end
 		end
 	end
 end

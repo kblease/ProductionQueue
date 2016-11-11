@@ -2565,6 +2565,11 @@ function OnCityProductionChanged(playerID:number, cityID:number)
 	Refresh();
 end
 
+function OnCityProductionUpdated( ownerPlayerID:number, cityID:number, eProductionType, eProductionObject)
+	if(ownerPlayerID ~= Game.GetLocalPlayer()) then return end
+	lastProductionCompletePerCity[cityID] = nil;
+end
+
 --- ===========================================================================
 --	Fires when a city's production is completed
 --  Note: This seems to sometimes fire more than once for a turn
@@ -2580,14 +2585,13 @@ function OnCityProductionCompleted(playerID, cityID, orderType, unitType, cancel
 
 	local currentTurn = Game.GetCurrentGameTurn();
 
-	if(canceled) then canceled = "true" else canceled = "false" end
+	local completedThing = "";
+	if(prodQueue[cityID][1]) then completedThing = prodQueue[cityID][1].entry.Name; end
 
 	-- Only one item can be produced per turn per city
 	if(lastProductionCompletePerCity[cityID] and lastProductionCompletePerCity[cityID] == currentTurn) then
 		return;
 	end
-
-	if canceled then canceled = "true" else canceled = "false" end
 
 	if(prodQueue[cityID] and prodQueue[cityID][1]) then
 		-- Check that the production is actually completed
@@ -3419,6 +3423,7 @@ function Initialize()
 
 	Events.CityProductionChanged.Add( OnCityProductionChanged );
 	Events.CityProductionCompleted.Add(OnCityProductionCompleted);
+	Events.CityProductionUpdated.Add(OnCityProductionUpdated);
 end
 Initialize();
 

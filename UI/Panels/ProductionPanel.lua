@@ -521,6 +521,7 @@ function PopulateList(data, listMode, listIM)
 	local queueList;
 	Controls.PauseCollapseList:Stop();
 	local selectedCity	= UI.GetHeadSelectedCity();
+	local pBuildings = selectedCity:GetBuildings();
 	local cityID = selectedCity:GetID();
 	local cityData = GetCityData(selectedCity);
 	local localPlayer = Players[Game.GetLocalPlayer()];
@@ -742,19 +743,19 @@ function PopulateList(data, listMode, listIM)
 
 		-- Populate Nested Buildings -----------------
 		for i, buildingItem in ipairs(data.BuildingItems) do
-			if(not buildingItem.IsWonder and not IsBuildingInQueue(selectedCity, buildingItem.Hash)) then
+			local displayItem = true;
 
-				-- PQ: Check if this building is mutually exclusive with another
-				if(GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash]) then
-					if(IsBuildingInQueue(selectedCity, GameInfo.Buildings[GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash].MutuallyExclusiveBuilding].Hash)) then
-						buildingItem.Disabled = true;
-
-						-- Concatenanting two fragments is not loc friendly.  This needs to change.
-						buildingItem.ToolTip = buildingItem.ToolTip .. "[NEWLINE][NEWLINE][COLOR:Red]" .. Locale.Lookup("LOC_UI_PEDIA_EXCLUSIVE_WITH");
-						buildingItem.ToolTip = buildingItem.ToolTip .. " " .. Locale.Lookup(GameInfo.Buildings[GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash].MutuallyExclusiveBuilding].Name);
-					end
+			-- PQ: Check if this building is mutually exclusive with another
+			if(GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash]) then
+				if(IsBuildingInQueue(selectedCity, GameInfo.Buildings[GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash].MutuallyExclusiveBuilding].Hash) or pBuildings:HasBuilding(GameInfo.Buildings[GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash].MutuallyExclusiveBuilding].Index)) then
+					displayItem = false;
+					-- -- Concatenanting two fragments is not loc friendly.  This needs to change.
+					-- buildingItem.ToolTip = buildingItem.ToolTip .. "[NEWLINE][NEWLINE][COLOR:Red]" .. Locale.Lookup("LOC_UI_PEDIA_EXCLUSIVE_WITH");
+					-- buildingItem.ToolTip = buildingItem.ToolTip .. " " .. Locale.Lookup(GameInfo.Buildings[GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash].MutuallyExclusiveBuilding].Name);
 				end
+			end
 
+			if(not buildingItem.IsWonder and not IsBuildingInQueue(selectedCity, buildingItem.Hash) and displayItem) then
 				local uniqueDrawerName = BUILDING_DRAWER_PREFIX..buildingItem.PrereqDistrict;
 				local uniqueIMName = BUILDING_IM_PREFIX..buildingItem.PrereqDistrict;
 				if (districtList[uniqueIMName] ~= nil) then
@@ -1721,6 +1722,7 @@ function OnPlayerTurnActivated(player, isFirstTimeThisTurn)
 	if (isFirstTimeThisTurn and Game.GetLocalPlayer() == player) then
 		CheckAndReplaceAllQueuesForUpgrades();
 		Refresh();
+		lastProductionCompletePerCity = {};
 	end
 end
 
@@ -2023,7 +2025,9 @@ function Refresh()
 			if(not row.IsWonder) then
 				if(GameInfo.Technologies[row.PrereqTech] and pPlayer:GetTechs():HasTech(GameInfo.Technologies[row.PrereqTech].Index)) then hasPrereqTech = true; end
 				if(GameInfo.Civics[row.PrereqCivic] and pPlayer:GetCulture():HasCivic(GameInfo.Civics[row.PrereqCivic].Index)) then hasPrereqCivic = true; end
-				if(GameInfo.Districts[row.PrereqDistrict] and IsHashInQueue( selectedCity, GameInfo.Districts[row.PrereqDistrict].Hash)) then isPrereqDistrictInQueue = true; end
+				if((GameInfo.Districts[row.PrereqDistrict] and IsHashInQueue( selectedCity, GameInfo.Districts[row.PrereqDistrict].Hash)) or cityDistricts:HasDistrict(GameInfo.Districts[row.PrereqDistrict].Index)) then
+					isPrereqDistrictInQueue = true;
+				end
 
 				local civTypeName = PlayerConfigurations[playerID]:GetCivilizationTypeName();
 
@@ -2100,6 +2104,8 @@ function Refresh()
 					doShow = false;
 				end
 			end
+
+
 
 			if not row.MustPurchase and ( buildQueue:CanProduce( row.Hash, true ) or (doShow and not row.IsWonder) ) then
 				local isCanStart, results			 = buildQueue:CanProduce( row.Hash, false, true );
@@ -2573,6 +2579,8 @@ function OnCityProductionCompleted(playerID, cityID, orderType, unitType, cancel
 	if (pCity == nil) then return end;
 
 	local currentTurn = Game.GetCurrentGameTurn();
+
+	if(canceled) then canceled = "true" else canceled = "false" end
 
 	-- Only one item can be produced per turn per city
 	if(lastProductionCompletePerCity[cityID] and lastProductionCompletePerCity[cityID] == currentTurn) then
@@ -3413,3 +3421,4 @@ function Initialize()
 	Events.CityProductionCompleted.Add(OnCityProductionCompleted);
 end
 Initialize();
+

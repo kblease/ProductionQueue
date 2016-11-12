@@ -1936,6 +1936,7 @@ function Refresh()
 		local cityDistricts = selectedCity:GetDistricts();
 		local cityID		= selectedCity:GetID();
 		local cityData 		= GetCityData(selectedCity);
+		local cityPlot 		= Map.GetPlot(selectedCity:GetX(), selectedCity:GetY());
 
 		if(not prodQueue[cityID]) then prodQueue[cityID] = {}; end
 		CheckAndReplaceQueueForUpgrades(selectedCity);
@@ -2086,6 +2087,40 @@ function Refresh()
 					end
 
 					if(not prereqInQueue) then doShow = false; end
+				end
+
+				-- Check for river adjacency requirement
+				if (row.RequiresAdjacentRiver and not cityPlot:IsRiver()) then
+					doShow = false;
+				end
+
+				-- Check for buildings enabled by dominant religious beliefs
+				if(GameInfo.Buildings[row.Hash].EnabledByReligion) then
+					doShow = false;
+
+					if ((table.count(cityData.Religions) > 1) or (cityData.PantheonBelief > -1)) then
+						local modifierIDs = {};
+
+						if cityData.PantheonBelief > -1 then
+							table.insert(modifierIDs, GameInfo.BeliefModifiers[GameInfo.Beliefs[cityData.PantheonBelief].BeliefType].ModifierID);
+						end
+						if (table.count(cityData.Religions) > 0) then
+							for _, beliefIndex in ipairs(cityData.BeliefsOfDominantReligion) do
+								table.insert(modifierIDs, GameInfo.BeliefModifiers[GameInfo.Beliefs[beliefIndex].BeliefType].ModifierID);
+							end
+						end
+
+						if(#modifierIDs > 0) then
+							for i=#modifierIDs, 1, -1 do
+								if(string.find(modifierIDs[i], "ALLOW_")) then
+									modifierIDs[i] = string.gsub(modifierIDs[i], "ALLOW", "BUILDING");
+									if(row.BuildingType == string.gsub(modifierIDs[i], "ALLOW", "BUILDING")) then
+										doShow = true;
+									end
+								end
+							end
+						end
+					end
 				end
 
 				-- Check if it's been built already
@@ -3061,6 +3096,22 @@ end
 --  tParameters provided from the StrategicView callback event
 --- ==========================================================================
 function BuildPlaced(city, tParameters)
+	-- Check if we still have enough population for a district we're about to place
+	local districtHash = tParameters[CityOperationTypes.PARAM_DISTRICT_TYPE];
+	if(districtHash) then
+		local pCityDistricts = city:GetDistricts();
+		local numDistricts = pCityDistricts:GetNumZonedDistrictsRequiringPopulation();
+		local numPossibleDistricts = pCityDistricts:GetNumAllowedDistrictsRequiringPopulation();
+
+		if(GameInfo.Districts[districtHash] and GameInfo.Districts[districtHash].RequiresPopulation and numDistricts <= numPossibleDistricts) then
+			if(GetNumDistrictsInCityQueue(city) + numDistricts > numPossibleDistricts) then
+				RemoveFromQueue(city:GetID(), 1);
+				BuildFirstQueued(city);
+				return;
+			end
+		end
+	end
+
 	CityManager.RequestOperation(city, CityOperationTypes.BUILD, tParameters);
 end
 
@@ -3316,6 +3367,15 @@ function CheckAndReplaceQueueForUpgrades(city)
 					table.insert(removeUnits, i);
 				end
 			end
+
+			-- Check if a queued wonder is still available
+			if(GameInfo.Buildings[qi.entry.Hash] and GameInfo.Buildings[qi.entry.Hash].MaxWorldInstances == 1) then
+				if(not buildQueue:CanProduce(qi.entry.Hash, true)) then
+					table.insert(removeUnits, i);
+				elseif(not IsCityPlotValidForWonderPlacement(city, qi.plotID, GameInfo.Buildings[qi.entry.Hash])) then
+					table.insert(removeUnits, i);
+				end
+			end
 		end
 	end
 
@@ -3326,6 +3386,14 @@ function CheckAndReplaceQueueForUpgrades(city)
 				BuildFirstQueued(city);
 			end
 		end
+	end
+end
+
+function IsCityPlotValidForWonderPlacement(city, plotID, wonder)
+	if Map.GetPlotByIndex(plotID):CanHaveWonder(wonder.Index, city:GetOwner(), city:GetID()) then
+		return true;
+	else
+		return false;
 	end
 end
 
@@ -3454,4 +3522,3 @@ function Initialize()
 	Events.CityProductionUpdated.Add(OnCityProductionUpdated);
 end
 Initialize();
-

@@ -23,6 +23,9 @@
                         <Image Texture="Controls_Gradient_HalfRadial" Size="parent, 24" FlipY="1" Anchor="C,T" Color="72,103,130,255" />
                     </Container>
                     <Label Anchor="C,C" Offset="-5,0" Style="CityPanelSubPanelTitle" String="LOC_HUD_CITY_PRODUCTION_QUEUE" />
+                    <GridButton ID="QueueWindowReset" Anchor="L,T" AnchorSide="I,I" Offset="2,2" Size="23,23" Style="RowButton" ToolTip="LOC_LEADER_VIEWER_DEBUG_RESET">
+                        <Label Anchor="C,C" Style="FontNormalBold14" Offset="0,-1" String="x" />
+                    </GridButton>
                 </Grid>
             </Grid>
         </SlideAnim>

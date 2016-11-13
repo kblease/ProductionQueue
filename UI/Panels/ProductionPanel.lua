@@ -493,7 +493,7 @@ function View(data)
 		Controls.NoFaithContent:SetHide(true);
 	end
 
-	m_tabs.SelectTab(m_productionTab);
+	-- m_tabs.SelectTab(m_productionTab);
 end
 
 function ResetInstanceVisibility(productionItem: table)
@@ -1014,6 +1014,8 @@ function PopulateList(data, listMode, listIM)
 							end
 						end
 					end
+
+					if(qi.entry.Repair) then suffix = " (" .. Locale.Lookup("LOC_UNITOPERATION_REPAIR_DESCRIPTION") .. ")" end
 
 					queueListing.LabelText:SetText(Locale.Lookup(qi.entry.Name) .. suffix);
 					queueListing.Icon:SetIcon(info.Icon)
@@ -2031,19 +2033,41 @@ function Refresh()
 			local hasPrereqTech = row.PrereqTech == nil;
 			local hasPrereqCivic = row.PrereqCivic == nil;
 			local isPrereqDistrictInQueue = false;
+			local disabledTooltip = nil;
 			local doShow = true;
 
 			if(not row.IsWonder) then
-				if(GameInfo.Technologies[row.PrereqTech] and pPlayer:GetTechs():HasTech(GameInfo.Technologies[row.PrereqTech].Index)) then hasPrereqTech = true; end
-				if(GameInfo.Civics[row.PrereqCivic] and pPlayer:GetCulture():HasCivic(GameInfo.Civics[row.PrereqCivic].Index)) then hasPrereqCivic = true; end
-				if((GameInfo.Districts[row.PrereqDistrict] and IsHashInQueue( selectedCity, GameInfo.Districts[row.PrereqDistrict].Hash)) or cityDistricts:HasDistrict(GameInfo.Districts[row.PrereqDistrict].Index)) then
+				local prereqTech = GameInfo.Technologies[row.PrereqTech];
+				local prereqCivic = GameInfo.Civics[row.PrereqCivic];
+				local prereqDistrict = GameInfo.Districts[row.PrereqDistrict];
+
+				if(prereqTech and pPlayer:GetTechs():HasTech(prereqTech.Index)) then hasPrereqTech = true; end
+				if(prereqCivic and pPlayer:GetCulture():HasCivic(prereqCivic.Index)) then hasPrereqCivic = true; end
+				if((prereqDistrict and IsHashInQueue( selectedCity, prereqDistrict.Hash)) or cityDistricts:HasDistrict(prereqDistrict.Index)) then
 					isPrereqDistrictInQueue = true;
+
+					if(not IsHashInQueue( selectedCity, prereqDistrict.Hash )) then
+						if(cityDistricts:IsPillaged(prereqDistrict.Index)) then
+							disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_PILLAGED");
+						elseif(cityDistricts:IsContaminated(prereqDistrict.Index)) then
+							disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_CONTAMINATED");
+						end
+					end
 				end
 
 				for replacesRow in GameInfo.DistrictReplaces() do
 					if(row.PrereqDistrict == replacesRow.ReplacesDistrictType) then
-						if((GameInfo.Districts[replacesRow.CivUniqueDistrictType] and IsHashInQueue( selectedCity, GameInfo.Districts[replacesRow.CivUniqueDistrictType].Hash)) or cityDistricts:HasDistrict(GameInfo.Districts[replacesRow.CivUniqueDistrictType].Index)) then
+						local replacementDistrict = GameInfo.Districts[replacesRow.CivUniqueDistrictType];
+						if((replacementDistrict and IsHashInQueue( selectedCity, replacementDistrict.Hash)) or cityDistricts:HasDistrict(replacementDistrict.Index)) then
 							isPrereqDistrictInQueue = true;
+
+							if(not IsHashInQueue( selectedCity, replacementDistrict.Hash )) then
+								if(cityDistricts:IsPillaged(replacementDistrict.Index)) then
+									disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_PILLAGED");
+								elseif(cityDistricts:IsContaminated(replacementDistrict.Index)) then
+									disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_CONTAMINATED");
+								end
+							end
 						end
 						break;
 					end
@@ -2067,7 +2091,7 @@ function Refresh()
 						if(not isCorrectCiv) then doShow = false; end
 					end
 
-					if(replaceRow.ReplacesBuildingType == buildingType) then
+					if(replaceRow.ReplacesBuildingType == row.BuildingType) then
 						local traitName = "TRAIT_CIVILIZATION_" .. replaceRow.CivUniqueBuildingType;
 						local isCorrectCiv = false;
 
@@ -2088,8 +2112,45 @@ function Refresh()
 
 					for prereqRow in GameInfo.BuildingPrereqs() do
 						if(prereqRow.Building == row.BuildingType) then
-							if(IsHashInQueue(selectedCity, GameInfo.Buildings[prereqRow.PrereqBuilding].Hash)) then
+							for replaceRow in GameInfo.BuildingReplaces() do
+								if(replaceRow.ReplacesBuildingType == prereqRow.PrereqBuilding and IsHashInQueue(selectedCity, GameInfo.Buildings[replaceRow.CivUniqueBuildingType].Hash)) then
+									prereqInQueue = true;
+									break;
+								end
+							end
+
+							if(prereqInQueue or IsHashInQueue(selectedCity, GameInfo.Buildings[prereqRow.PrereqBuilding].Hash)) then
 								prereqInQueue = true;
+
+								-- Check for buildings enabled by dominant religious beliefs
+								if(GameInfo.Buildings[row.Hash].EnabledByReligion) then
+									doShow = false;
+
+									if ((table.count(cityData.Religions) > 1) or (cityData.PantheonBelief > -1)) then
+										local modifierIDs = {};
+
+										if cityData.PantheonBelief > -1 then
+											table.insert(modifierIDs, GameInfo.BeliefModifiers[GameInfo.Beliefs[cityData.PantheonBelief].BeliefType].ModifierID);
+										end
+										if (table.count(cityData.Religions) > 0) then
+											for _, beliefIndex in ipairs(cityData.BeliefsOfDominantReligion) do
+												table.insert(modifierIDs, GameInfo.BeliefModifiers[GameInfo.Beliefs[beliefIndex].BeliefType].ModifierID);
+											end
+										end
+
+										if(#modifierIDs > 0) then
+											for i=#modifierIDs, 1, -1 do
+												if(string.find(modifierIDs[i], "ALLOW_")) then
+													modifierIDs[i] = string.gsub(modifierIDs[i], "ALLOW", "BUILDING");
+													if(row.BuildingType == string.gsub(modifierIDs[i], "ALLOW", "BUILDING")) then
+														doShow = true;
+													end
+												end
+											end
+										end
+									end
+								end
+
 								break;
 							end
 						end
@@ -2103,35 +2164,6 @@ function Refresh()
 					doShow = false;
 				end
 
-				-- Check for buildings enabled by dominant religious beliefs
-				if(GameInfo.Buildings[row.Hash].EnabledByReligion) then
-					doShow = false;
-
-					if ((table.count(cityData.Religions) > 1) or (cityData.PantheonBelief > -1)) then
-						local modifierIDs = {};
-
-						if cityData.PantheonBelief > -1 then
-							table.insert(modifierIDs, GameInfo.BeliefModifiers[GameInfo.Beliefs[cityData.PantheonBelief].BeliefType].ModifierID);
-						end
-						if (table.count(cityData.Religions) > 0) then
-							for _, beliefIndex in ipairs(cityData.BeliefsOfDominantReligion) do
-								table.insert(modifierIDs, GameInfo.BeliefModifiers[GameInfo.Beliefs[beliefIndex].BeliefType].ModifierID);
-							end
-						end
-
-						if(#modifierIDs > 0) then
-							for i=#modifierIDs, 1, -1 do
-								if(string.find(modifierIDs[i], "ALLOW_")) then
-									modifierIDs[i] = string.gsub(modifierIDs[i], "ALLOW", "BUILDING");
-									if(row.BuildingType == string.gsub(modifierIDs[i], "ALLOW", "BUILDING")) then
-										doShow = true;
-									end
-								end
-							end
-						end
-					end
-				end
-
 				-- Check if it's been built already
 				if(hasPrereqTech and hasPrereqCivic and isPrereqDistrictInQueue and doShow) then
 					for _, district in ipairs(cityData.BuildingsAndDistricts) do
@@ -2140,7 +2172,7 @@ function Refresh()
 
 							for _,building in ipairs(district.Buildings) do
 								if(building.Name == Locale.Lookup(row.Name)) then
-									if(building.isBuilt) then
+									if(building.isBuilt and not building.isPillaged) then
 										doShow = false;
 									else
 										doShow = true;
@@ -2159,8 +2191,6 @@ function Refresh()
 				end
 			end
 
-
-
 			if not row.MustPurchase and ( buildQueue:CanProduce( row.Hash, true ) or (doShow and not row.IsWonder) ) then
 				local isCanStart, results			 = buildQueue:CanProduce( row.Hash, false, true );
 				local isDisabled			:boolean = false;
@@ -2174,6 +2204,14 @@ function Refresh()
 
 				local iProductionCost		:number = buildQueue:GetBuildingCost( row.Index );
 				local iProductionProgress	:number = buildQueue:GetBuildingProgress( row.Index );
+
+				if(disabledTooltip) then
+					isDisabled = true;
+					if(not string.find(sToolTip, "COLOR:Red")) then
+						sToolTip = sToolTip .. "[NEWLINE][NEWLINE][COLOR:Red]" .. disabledTooltip .. "[ENDCOLOR]";
+					end
+				end
+
 				sToolTip = sToolTip .. ComposeProductionCostString( iProductionProgress, iProductionCost );
 
 				local iPrereqDistrict = "";
@@ -2629,7 +2667,6 @@ end
 --  Note: This seems to sometimes fire more than once for a turn
 --- ===========================================================================
 function OnCityProductionCompleted(playerID, cityID, orderType, unitType, canceled, typeModifier)
-
 	if (playerID ~= Game.GetLocalPlayer()) then return end;
 
 	local pPlayer = Players[ playerID ];
@@ -2650,10 +2687,9 @@ function OnCityProductionCompleted(playerID, cityID, orderType, unitType, cancel
 		local productionInfo = GetProductionInfoOfCity(pCity, prodQueue[cityID][1].entry.Hash);
 		local pDistricts = pCity:GetDistricts();
 		local pBuildings = pCity:GetBuildings();
+		local isComplete = false;
 
 		if(prodQueue[cityID][1].type == PRODUCTION_TYPE.BUILDING or prodQueue[cityID][1].type == PRODUCTION_TYPE.PLACED) then
-			local isComplete = false;
-
 			if(GameInfo.Districts[prodQueue[cityID][1].entry.Hash] and pDistricts:HasDistrict(GameInfo.Districts[prodQueue[cityID][1].entry.Hash].Index)) then
 				isComplete = true;
 			elseif(GameInfo.Buildings[prodQueue[cityID][1].entry.Hash] and pBuildings:HasBuilding(GameInfo.Buildings[prodQueue[cityID][1].entry.Hash].Index)) then
@@ -2665,6 +2701,61 @@ function OnCityProductionCompleted(playerID, cityID, orderType, unitType, cancel
 			if(not isComplete) then
 				return;
 			end
+		end
+
+		-- PQ: Experimental
+		local productionType = prodQueue[cityID][1].type;
+		if(orderType == 0) then
+			if(productionType == PRODUCTION_TYPE.UNIT or productionType == PRODUCTION_TYPE.CORPS or productionType == PRODUCTION_TYPE.ARMY) then
+				if(GameInfo.Units[prodQueue[cityID][1].entry.Hash].Index == unitType) then
+					isComplete = true;
+				end
+			end
+		elseif(orderType == 1) then
+			-- Building/wonder
+			if(productionType == PRODUCTION_TYPE.BUILDING or productionType == PRODUCTION_TYPE.PLACED) then
+				local buildingInfo = GameInfo.Buildings[prodQueue[cityID][1].entry.Hash];
+				if(buildingInfo and buildingInfo.Index == unitType) then
+					isComplete = true;
+				end
+			end
+
+				-- Check if this building is in our queue at all
+			if(not isComplete and IsHashInQueue(pCity, GameInfo.Buildings[unitType].Hash)) then
+				local removeIndex = GetIndexOfHashInQueue(pCity, GameInfo.Buildings[unitType].Hash);
+				RemoveFromQueue(cityID, removeIndex, true);
+
+				if(removeIndex == 1) then
+					BuildFirstQueued(pCity);
+				else
+					Refresh();
+				end
+
+				SaveQueues();
+				return;
+			end
+		elseif(orderType == 2) then
+			-- District
+			if(productionType == PRODUCTION_TYPE.PLACED) then
+				local districtInfo = GameInfo.Districts[prodQueue[cityID][1].entry.Hash];
+				if(districtInfo and districtInfo.Index == unitType) then
+					isComplete = true;
+				end
+			end
+		elseif(orderType == 3) then
+			-- Project
+			if(productionType == PRODUCTION_TYPE.PROJECT) then
+				local projectInfo = GameInfo.Projects[prodQueue[cityID][1].entry.Hash];
+				if(projectInfo and projectInfo.Index == unitType) then
+					isComplete = true;
+				end
+			end
+		end
+
+		if(not isComplete) then
+			print("Non matching orderType and/or unitType");
+			Refresh();
+			return;
 		end
 
 		table.remove(prodQueue[cityID], 1);
@@ -2796,13 +2887,29 @@ function IsHashInQueue(city, hash)
 	local cityID = city:GetID();
 
 	if(prodQueue and #prodQueue[cityID] > 0) then
-		for _, qi in pairs(prodQueue[cityID]) do
+		for i, qi in pairs(prodQueue[cityID]) do
 			if(qi.entry and qi.entry.Hash == hash) then
 				return true;
 			end
 		end
 	end
 	return false;
+end
+
+--- ===========================================================================
+--	Returns the first instance of a hash in a city's Production Queue
+--- ===========================================================================
+function GetIndexOfHashInQueue(city, hash)
+	local cityID = city:GetID();
+
+	if(prodQueue and #prodQueue[cityID] > 0) then
+		for i, qi in pairs(prodQueue[cityID]) do
+			if(qi.entry and qi.entry.Hash == hash) then
+				return i;
+			end
+		end
+	end
+	return nil;
 end
 
 --- ===========================================================================
@@ -3085,8 +3192,8 @@ end
 --- ===========================================================================
 --	Remove a specific index from a city's Production Queue
 --- ===========================================================================
-function RemoveFromQueue(cityID, index)
-	if(prodQueue[cityID] and #prodQueue[cityID] > 1 and prodQueue[cityID][index]) then
+function RemoveFromQueue(cityID, index, force)
+	if(prodQueue[cityID] and (#prodQueue[cityID] > 1 or force) and prodQueue[cityID][index]) then
 		local destIndex = MoveQueueIndex(cityID, index, #prodQueue[cityID]);
 		if(destIndex > 0) then
 			-- There was a conflict
@@ -3151,6 +3258,8 @@ function BuildFirstQueued(pCity)
 		elseif(prodQueue[cityID][1].type == PRODUCTION_TYPE.PROJECT) then
 			AdvanceProject(pCity, prodQueue[cityID][1].entry);
 		end
+	else
+		Refresh();
 	end
 end
 
@@ -3194,9 +3303,9 @@ function MoveQueueIndex(cityID, sourceIndex, destIndex, noMove)
 		-- Each time we swap, we need to check that there isn't a prereq that would break
 		if(sourceInfo.type == PRODUCTION_TYPE.BUILDING and prodQueue[cityID][i+direction].type == PRODUCTION_TYPE.PLACED) then
 			local buildingInfo = GameInfo.Buildings[sourceInfo.entry.Hash];
-			if(buildingInfo and buildingInfo.PrereqDistrict and not prodQueue[cityID][i+direction].entry.Repair) then
+			if(buildingInfo and buildingInfo.PrereqDistrict) then
 				local districtInfo = GameInfo.Districts[prodQueue[cityID][i+direction].entry.Hash];
-				if(districtInfo and districtInfo.DistrictType == buildingInfo.PrereqDistrict) then
+				if(districtInfo and (districtInfo.DistrictType == buildingInfo.PrereqDistrict or (GameInfo.DistrictReplaces[prodQueue[cityID][i+direction].entry.Hash] and GameInfo.DistrictReplaces[prodQueue[cityID][i+direction].entry.Hash].ReplacesDistrictType == buildingInfo.PrereqDistrict))) then
 					actualDest = i;
 					break;
 				end
@@ -3205,20 +3314,28 @@ function MoveQueueIndex(cityID, sourceIndex, destIndex, noMove)
 			local buildingInfo = GameInfo.Buildings[prodQueue[cityID][i+direction].entry.Hash];
 			local districtInfo = GameInfo.Districts[sourceInfo.entry.Hash];
 
-			if(buildingInfo and buildingInfo.PrereqDistrict and not sourceInfo.entry.Repair) then
-				if(districtInfo and districtInfo.DistrictType == buildingInfo.PrereqDistrict) then
+			if(buildingInfo and buildingInfo.PrereqDistrict) then
+				if(districtInfo and (districtInfo.DistrictType == buildingInfo.PrereqDistrict or (GameInfo.DistrictReplaces[sourceInfo.entry.Hash] and GameInfo.DistrictReplaces[sourceInfo.entry.Hash].ReplacesDistrictType == buildingInfo.PrereqDistrict))) then
 					actualDest = i;
 					break;
 				end
 			end
 		elseif(sourceInfo.type == PRODUCTION_TYPE.BUILDING and prodQueue[cityID][i+direction].type == PRODUCTION_TYPE.BUILDING) then
 			local destInfo = GameInfo.Buildings[prodQueue[cityID][i+direction].entry.Hash];
-			local sourceInfo = GameInfo.Buildings[sourceInfo.entry.Hash];
+			local sourceBuildingInfo = GameInfo.Buildings[sourceInfo.entry.Hash];
+
+			if(GameInfo.BuildingReplaces[destInfo.BuildingType]) then
+				destInfo = GameInfo.Buildings[GameInfo.BuildingReplaces[destInfo.BuildingType].ReplacesBuildingType];
+			end
+
+			if(GameInfo.BuildingReplaces[sourceBuildingInfo.BuildingType]) then
+				sourceBuildingInfo = GameInfo.Buildings[GameInfo.BuildingReplaces[sourceBuildingInfo.BuildingType].ReplacesBuildingType];
+			end
 
 			local halt = false;
 
 			for prereqRow in GameInfo.BuildingPrereqs() do
-				if(prereqRow.Building == sourceInfo.BuildingType) then
+				if(prereqRow.Building == sourceBuildingInfo.BuildingType) then
 					if(destInfo.BuildingType == prereqRow.PrereqBuilding) then
 						halt = true;
 						actualDest = i;
@@ -3226,7 +3343,7 @@ function MoveQueueIndex(cityID, sourceIndex, destIndex, noMove)
 					end
 				end
 
-				if(prereqRow.PrereqBuilding == sourceInfo.BuildingType) then
+				if(prereqRow.PrereqBuilding == sourceBuildingInfo.BuildingType) then
 					if(destInfo.BuildingType == prereqRow.Building) then
 						halt = true;
 						actualDest = i;
@@ -3312,7 +3429,7 @@ function CheckAndReplaceQueueForUpgrades(city)
 						canUpgrade = false;
 					end
 
-					local canBuildNewUnit = buildQueue:CanProduce( upgradeUnit.Hash, true );
+					local canBuildNewUnit = buildQueue:CanProduce( upgradeUnit.Hash, false, true );
 
 					-- Only auto replace if we CAN'T queue the old unit
 					if(not buildQueue:CanProduce( qi.entry.Hash, true ) and canUpgrade and canBuildNewUnit) then
@@ -3381,7 +3498,7 @@ function CheckAndReplaceQueueForUpgrades(city)
 			if(GameInfo.Buildings[qi.entry.Hash] and GameInfo.Buildings[qi.entry.Hash].MaxWorldInstances == 1) then
 				if(not buildQueue:CanProduce(qi.entry.Hash, true)) then
 					table.insert(removeUnits, i);
-				elseif(not IsCityPlotValidForWonderPlacement(city, qi.plotID, GameInfo.Buildings[qi.entry.Hash])) then
+				elseif(not IsCityPlotValidForWonderPlacement(city, qi.plotID, GameInfo.Buildings[qi.entry.Hash]) and not buildQueue:HasBeenPlaced(qi.entry.Hash)) then
 					table.insert(removeUnits, i);
 				end
 			end
@@ -3390,8 +3507,8 @@ function CheckAndReplaceQueueForUpgrades(city)
 
 	if(#removeUnits > 0) then
 		for i=#removeUnits, 1, -1 do
-			RemoveFromQueue(cityID, removeUnits[i]);
-			if(removeUnits[i] == 1) then
+			local success = RemoveFromQueue(cityID, removeUnits[i]);
+			if(success and removeUnits[i] == 1) then
 				BuildFirstQueued(city);
 			end
 		end

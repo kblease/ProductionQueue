@@ -2040,6 +2040,15 @@ function Refresh()
 					isPrereqDistrictInQueue = true;
 				end
 
+				for replacesRow in GameInfo.DistrictReplaces() do
+					if(row.PrereqDistrict == replacesRow.ReplacesDistrictType) then
+						if((GameInfo.Districts[replacesRow.CivUniqueDistrictType] and IsHashInQueue( selectedCity, GameInfo.Districts[replacesRow.CivUniqueDistrictType].Hash)) or cityDistricts:HasDistrict(GameInfo.Districts[replacesRow.CivUniqueDistrictType].Index)) then
+							isPrereqDistrictInQueue = true;
+						end
+						break;
+					end
+				end
+
 				local civTypeName = PlayerConfigurations[playerID]:GetCivilizationTypeName();
 
 				-- Check for unique buildings
@@ -3522,3 +3531,4 @@ function Initialize()
 	Events.CityProductionUpdated.Add(OnCityProductionUpdated);
 end
 Initialize();
+

@@ -2053,6 +2053,10 @@ function Refresh()
 							disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_CONTAMINATED");
 						end
 					end
+				else
+					if(not buildQueue:CanProduce(row.BuildingType, false, true)) then
+						disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_IS_OCCUPIED");
+					end
 				end
 
 				for replacesRow in GameInfo.DistrictReplaces() do
@@ -2067,6 +2071,10 @@ function Refresh()
 								elseif(cityDistricts:IsContaminated(replacementDistrict.Index)) then
 									disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_CONTAMINATED");
 								end
+							end
+						else
+							if(not buildQueue:CanProduce(row.BuildingType, false, true)) then
+								disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_IS_OCCUPIED");
 							end
 						end
 						break;

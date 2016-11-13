@@ -2053,31 +2053,39 @@ function Refresh()
 							disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_CONTAMINATED");
 						end
 					end
-				else
-					if(not buildQueue:CanProduce(row.BuildingType, false, true)) then
-						disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_IS_OCCUPIED");
+				end
+
+				if(not isPrereqDistrictInQueue) then
+					for replacesRow in GameInfo.DistrictReplaces() do
+						if(row.PrereqDistrict == replacesRow.ReplacesDistrictType) then
+							local replacementDistrict = GameInfo.Districts[replacesRow.CivUniqueDistrictType];
+							if((replacementDistrict and IsHashInQueue( selectedCity, replacementDistrict.Hash)) or cityDistricts:HasDistrict(replacementDistrict.Index)) then
+								isPrereqDistrictInQueue = true;
+
+								if(not IsHashInQueue( selectedCity, replacementDistrict.Hash )) then
+									if(cityDistricts:IsPillaged(replacementDistrict.Index)) then
+										disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_PILLAGED");
+									elseif(cityDistricts:IsContaminated(replacementDistrict.Index)) then
+										disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_CONTAMINATED");
+									end
+								end
+							end
+							break;
+						end
 					end
 				end
 
-				for replacesRow in GameInfo.DistrictReplaces() do
-					if(row.PrereqDistrict == replacesRow.ReplacesDistrictType) then
-						local replacementDistrict = GameInfo.Districts[replacesRow.CivUniqueDistrictType];
-						if((replacementDistrict and IsHashInQueue( selectedCity, replacementDistrict.Hash)) or cityDistricts:HasDistrict(replacementDistrict.Index)) then
-							isPrereqDistrictInQueue = true;
-
-							if(not IsHashInQueue( selectedCity, replacementDistrict.Hash )) then
-								if(cityDistricts:IsPillaged(replacementDistrict.Index)) then
-									disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_PILLAGED");
-								elseif(cityDistricts:IsContaminated(replacementDistrict.Index)) then
-									disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_DISTRICT_IS_CONTAMINATED");
+				if(not isPrereqDistrictInQueue) then
+					local canBuild, reasons = buildQueue:CanProduce(row.BuildingType, false, true);
+					if(not canBuild and reasons) then
+						local pFailureReasons = reasons[CityCommandResults.FAILURE_REASONS];
+						if pFailureReasons ~= nil and table.count( pFailureReasons ) > 0 then
+							for i,v in ipairs(pFailureReasons) do
+								if("LOC_BUILDING_CONSTRUCT_IS_OCCUPIED" == v) then
+									disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_IS_OCCUPIED");
 								end
 							end
-						else
-							if(not buildQueue:CanProduce(row.BuildingType, false, true)) then
-								disabledTooltip = Locale.Lookup("LOC_BUILDING_CONSTRUCT_IS_OCCUPIED");
-							end
 						end
-						break;
 					end
 				end
 
@@ -3656,4 +3664,3 @@ function Initialize()
 	Events.CityProductionUpdated.Add(OnCityProductionUpdated);
 end
 Initialize();
-

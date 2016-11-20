@@ -3397,7 +3397,15 @@ function OnStrategicViewMapPlacementProductionClose(tProductionQueueParameters)
 		tParameters=tProductionQueueParameters.tParameters
 		});
 
-	if(MoveQueueIndex(cityID, index, 1) == 0) then BuildFirstQueued(tProductionQueueParameters.pSelectedCity); end
+	if(nextDistrictSkipToFront) then
+		local actualDest = MoveQueueIndex(cityID, index, 1);
+		if(actualDest == 0 or actualDest == 1) then
+			BuildFirstQueued(tProductionQueueParameters.pSelectedCity);
+		end
+	elseif(#prodQueue[cityID] == 1) then
+		BuildFirstQueued(tProductionQueueParameters.pSelectedCity);
+	end
+
 	Refresh(true);
 	UI.PlaySound("Confirm_Production");
 end

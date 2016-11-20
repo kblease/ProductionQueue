@@ -136,7 +136,6 @@ function OnExpand(instance:table)
 		instance.ListSlide:SetSpeed(3.5);
 		instance.ListAlpha:SetSpeed(4);
 	end
-
 	m_kClickedInstance = instance;
 	instance.HeaderOn:SetHide(false);
 	instance.Header:SetHide(true);
@@ -455,7 +454,7 @@ end
 --	Initialize, Refresh, Populate, View
 --	Update the layout based on the view model
 -- ===========================================================================
-function View(data)
+function View(data, persistCollapse)
 	local selectedCity	= UI.GetHeadSelectedCity();
 	-- Get the hashes for the top three recommended items
 	m_recommendedItems = selectedCity:GetCityAI():GetBuildRecommendations();
@@ -463,30 +462,61 @@ function View(data)
 	PopulateList(data, LISTMODE.PURCHASE_GOLD, m_purchaseListIM);
 	PopulateList(data, LISTMODE.PURCHASE_FAITH, m_purchaseFaithListIM);
 
-	if( prodDistrictList ~= nil) then
-		OnExpand(prodDistrictList);
+	if(persistCollapse) then
+		if(prodDistrictList ~= nil and not prodDistrictList.HeaderOn:IsHidden()) then
+			OnExpand(prodDistrictList);
+		end
+		if(prodWonderList ~= nil and not prodWonderList.HeaderOn:IsHidden()) then
+			OnExpand(prodWonderList);
+		end
+		if(prodUnitList ~= nil and not prodUnitList.HeaderOn:IsHidden()) then
+			OnExpand(prodUnitList);
+		end
+		if(prodProjectList ~= nil and not prodProjectList.HeaderOn:IsHidden()) then
+			OnExpand(prodProjectList);
+		end
+		if(purchFaithBuildingList ~= nil and not purchFaithBuildingList.HeaderOn:IsHidden()) then
+			OnExpand(purchFaithBuildingList);
+		end
+		if(purchGoldBuildingList ~= nil and not purchGoldBuildingList.HeaderOn:IsHidden()) then
+			OnExpand(purchGoldBuildingList);
+		end
+		if(purchFaithUnitList ~= nil and not purchFaithUnitList.HeaderOn:IsHidden()) then
+			OnExpand(purchFaithUnitList);
+		end
+		if(purchGoldUnitList ~= nil and not purchGoldUnitList.HeaderOn:IsHidden()) then
+			OnExpand(purchGoldUnitList);
+		end
+	else
+		if(prodDistrictList ~= nil) then
+			OnExpand(prodDistrictList);
+		end
+		if(prodWonderList ~= nil) then
+			OnExpand(prodWonderList);
+		end
+		if(prodUnitList ~= nil) then
+			OnExpand(prodUnitList);
+		end
+		if(prodProjectList ~= nil) then
+			OnExpand(prodProjectList);
+		end
+		if(purchFaithBuildingList ~= nil) then
+			OnExpand(purchFaithBuildingList);
+		end
+		if(purchGoldBuildingList ~= nil) then
+			OnExpand(purchGoldBuildingList);
+		end
+		if(purchFaithUnitList ~= nil ) then
+			OnExpand(purchFaithUnitList);
+		end
+		if(purchGoldUnitList ~= nil) then
+			OnExpand(purchGoldUnitList);
+		end
+
+		m_tabs.SelectTab(m_productionTab);
 	end
-	if( prodWonderList ~= nil) then
-		OnExpand(prodWonderList);
-	end
-	if(prodUnitList ~= nil) then
-		OnExpand(prodUnitList);
-	end
-	if(prodProjectList ~= nil) then
-		OnExpand(prodProjectList);
-	end
-	if( purchFaithBuildingList ~= nil) then
-		OnExpand(purchFaithBuildingList);
-	end
-	if( purchGoldBuildingList ~= nil) then
-		OnExpand(purchGoldBuildingList);
-	end
-	if( purchFaithUnitList ~= nil ) then
-		OnExpand(purchFaithUnitList);
-	end
-	if( purchGoldUnitList ~= nil) then
-		OnExpand(purchGoldUnitList);
-	end
+
+
 	--
 
 	if( Controls.PurchaseList:GetSizeY() == 0 ) then
@@ -499,8 +529,6 @@ function View(data)
 	else
 		Controls.NoFaithContent:SetHide(true);
 	end
-
-	-- m_tabs.SelectTab(m_productionTab);
 end
 
 function ResetInstanceVisibility(productionItem: table)
@@ -1039,7 +1067,7 @@ function PopulateList(data, listMode, listIM)
 							if(i == 1) then
 								BuildFirstQueued(selectedCity);
 							else
-								Refresh();
+								Refresh(true);
 							end
 						end
 					end
@@ -1301,7 +1329,7 @@ function PopulateList(data, listMode, listIM)
 				local routesCapacity:number = playerTrade:GetOutgoingRouteCapacity();
 				local routesQueued  :number = 0;
 
-				if(routesCapacity > routesActive) then
+				if(routesCapacity >= routesActive) then
 					for _,city in pairs(prodQueue) do
 						for _,qi in pairs(city) do
 							if(qi.entry.Hash == item.Hash) then
@@ -1925,7 +1953,7 @@ function ComposeBldgForPurchase( pRow:table, pCity:table, sYield:string, pYieldS
 	return false, nil;
 end
 -- ===========================================================================
-function Refresh()
+function Refresh(persistCollapse)
 	local playerID	:number = Game.GetLocalPlayer();
 	local pPlayer	:table = Players[playerID];
 	if (pPlayer == nil) then
@@ -2187,6 +2215,14 @@ function Refresh()
 					doShow = false;
 				end
 
+				-- Check for wall obsolescence
+				if(row.OuterDefenseHitPoints and pPlayer:GetCulture():HasCivic(GameInfo.Civics["CIVIC_CIVIL_ENGINEERING"].Index)) then
+					doShow = false;
+				end
+
+				-- Check for internal only buildings
+				if(row.InternalOnly) then doShow = false end
+
 				-- Check if it's been built already
 				if(hasPrereqTech and hasPrereqCivic and isPrereqDistrictInQueue and doShow) then
 					for _, district in ipairs(cityData.BuildingsAndDistricts) do
@@ -2352,7 +2388,7 @@ function Refresh()
 				new_data.CurrentProduction = row.Name;
 			end
 
-			if buildQueue:CanProduce( row.Hash, true ) then
+			if buildQueue:CanProduce( row.Hash, true ) and not (row.MaxPlayerInstances and IsHashInAnyQueue(row.Hash)) then
 				local isCanProduceExclusion, results = buildQueue:CanProduce( row.Hash, false, true );
 				local isDisabled			:boolean = not isCanProduceExclusion;
 
@@ -2377,7 +2413,7 @@ function Refresh()
 			end
 		end
 
-		View(new_data);
+		View(new_data, persistCollapse);
 		ResizeQueueWindow();
 		SaveQueues();
 	end
@@ -2751,7 +2787,7 @@ function OnCityProductionCompleted(playerID, cityID, orderType, unitType, cancel
 				if(removeIndex == 1) then
 					BuildFirstQueued(pCity);
 				else
-					Refresh();
+					Refresh(true);
 				end
 
 				SaveQueues();
@@ -2776,8 +2812,7 @@ function OnCityProductionCompleted(playerID, cityID, orderType, unitType, cancel
 		end
 
 		if(not isComplete) then
-			print("Non matching orderType and/or unitType");
-			Refresh();
+			Refresh(true);
 			return;
 		end
 
@@ -2917,6 +2952,20 @@ function IsWonderInQueue(wonderHash)
 end
 
 --- ===========================================================================
+--	Checks if there is a specific hash in all Production Queues
+--- ===========================================================================
+function IsHashInAnyQueue(hash)
+	for _,city in pairs(prodQueue) do
+		for _, qi in pairs(city) do
+			if(qi.entry and qi.entry.Hash == hash) then
+				return true;
+			end
+		end
+	end
+	return false;
+end
+
+--- ===========================================================================
 --	Checks if there is a specific item hash in a city's Production Queue
 --- ===========================================================================
 function IsHashInQueue(city, hash)
@@ -3024,7 +3073,7 @@ function OnDropInQueue( dragStruct:table, queueListing:table, index:number )
 		if(index == 1 or dropArea.id == 1) then
 			BuildFirstQueued(city);
 		else
-			Refresh();
+			Refresh(true);
 		end
 	end
 end
@@ -3052,7 +3101,7 @@ function QueueUnitOfType(city, unitEntry, unitType, skipToFront)
 	if(#prodQueue[cityID] == 1 or skipToFront) then
 		BuildFirstQueued(city);
 	else
-		Refresh();
+		Refresh(true);
 	end
 
     UI.PlaySound("Confirm_Production");
@@ -3130,14 +3179,14 @@ function QueueBuilding(city, buildingEntry, skipToFront)
 
 		if(skipToFront) then
 			if(MoveQueueIndex(cityID, #prodQueue[cityID], 1) ~= 0) then
-				Refresh();
+				Refresh(true);
 			else
 				BuildFirstQueued(city);
 			end
 		elseif(#prodQueue[cityID] == 1) then
 			BuildFirstQueued(city);
 		else
-			Refresh();
+			Refresh(true);
 		end
 
         UI.PlaySound("Confirm_Production");
@@ -3187,7 +3236,7 @@ function QueueDistrict(city, districtEntry, skipToFront)
 		if(#prodQueue[cityID] == 1 or skipToFront) then
 			BuildFirstQueued(city);
 		else
-			Refresh();
+			Refresh(true);
 		end
         UI.PlaySound("Confirm_Production");
 	end
@@ -3215,7 +3264,7 @@ function QueueProject(city, projectEntry, skipToFront)
 	if(#prodQueue[cityID] == 1 or skipToFront) then
 			BuildFirstQueued(city);
 	else
-		Refresh();
+		Refresh(true);
 	end
 
     UI.PlaySound("Confirm_Production");
@@ -3312,7 +3361,7 @@ function BuildFirstQueued(pCity)
 			AdvanceProject(pCity, prodQueue[cityID][1].entry);
 		end
 	else
-		Refresh();
+		Refresh(true);
 	end
 end
 
@@ -3338,7 +3387,7 @@ function OnStrategicViewMapPlacementProductionClose(tProductionQueueParameters)
 		});
 
 	if(nextDistrictSkipToFront or #prodQueue[cityID] == 1) then BuildFirstQueued(tProductionQueueParameters.pSelectedCity); end
-	Refresh();
+	Refresh(true);
 	UI.PlaySound("Confirm_Production");
 end
 
@@ -3538,6 +3587,11 @@ function CheckAndReplaceQueueForUpgrades(city)
 						-- Can't build the old or new unit. Probably missing a resource. Remove from queue.
 						table.insert(removeUnits, i);
 					end
+				end
+			else
+				local canBuildUnit = buildQueue:CanProduce( qi.entry.Hash, false, true );
+				if(not canBuildUnit) then
+					table.insert(removeUnits, i);
 				end
 			end
 		elseif(qi.type == PRODUCTION_TYPE.BUILDING or qi.type == PRODUCTION_TYPE.PLACED) then
@@ -3762,6 +3816,7 @@ function Initialize()
 	Events.CityProductionChanged.Add( OnCityProductionChanged );
 	Events.CityProductionCompleted.Add(OnCityProductionCompleted);
 	Events.CityProductionUpdated.Add(OnCityProductionUpdated);
+	Events.CityMadePurchase.Add(Refresh);
 end
 Initialize();
 

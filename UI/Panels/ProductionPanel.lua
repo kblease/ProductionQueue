@@ -3295,6 +3295,18 @@ end
 --	Remove a specific index from a city's Production Queue
 --- ===========================================================================
 function RemoveFromQueue(cityID, index, force)
+	-- PQ: This is here for notque on CivFanatics for inclusion in his multiplayer mod
+	if(GameInfo.Districts[prodQueue[cityID][index].entry.Hash]) then
+		local pPlayer = Players[Game.GetLocalPlayer()];
+		local pCity = pPlayer:GetCities():FindID(cityID);
+		local pBuildQueue:table	= pCity:GetBuildQueue();
+
+		if (pBuildQueue:HasBeenPlaced(prodQueue[cityID][index].entry.Hash)) then
+			-- Don't allow a placed district to be removed from the queue
+			return false;
+		end
+	end
+
 	if(prodQueue[cityID] and (#prodQueue[cityID] > 1 or force) and prodQueue[cityID][index]) then
 		local destIndex = MoveQueueIndex(cityID, index, #prodQueue[cityID]);
 		if(destIndex > 0) then
@@ -3376,8 +3388,7 @@ function OnStrategicViewMapPlacementProductionClose(tProductionQueueParameters)
 
 	if(not prodQueue[cityID]) then prodQueue[cityID] = {}; end
 
-	local index = 1;
-	if(not nextDistrictSkipToFront) then index = #prodQueue[cityID] + 1; end
+	local index = #prodQueue[cityID] + 1;
 
 	table.insert(prodQueue[cityID], index, {
 		entry=entry,
@@ -3386,7 +3397,7 @@ function OnStrategicViewMapPlacementProductionClose(tProductionQueueParameters)
 		tParameters=tProductionQueueParameters.tParameters
 		});
 
-	if(nextDistrictSkipToFront or #prodQueue[cityID] == 1) then BuildFirstQueued(tProductionQueueParameters.pSelectedCity); end
+	if(MoveQueueIndex(cityID, index, 1) == 0) then BuildFirstQueued(tProductionQueueParameters.pSelectedCity); end
 	Refresh(true);
 	UI.PlaySound("Confirm_Production");
 end
@@ -3397,7 +3408,6 @@ end
 function MoveQueueIndex(cityID, sourceIndex, destIndex, noMove)
 	local direction = -1;
 	local actualDest = 0;
-
 	local sourceInfo = prodQueue[cityID][sourceIndex];
 
 	if(sourceIndex < destIndex) then direction = 1; end
@@ -3455,6 +3465,22 @@ function MoveQueueIndex(cityID, sourceIndex, destIndex, noMove)
 			end
 
 			if(halt == true) then break; end
+
+		-- PQ: The following is for notque on CivFanatics for inclusion in his multiplayer mod
+		elseif(sourceInfo.type == PRODUCTION_TYPE.PLACED and prodQueue[cityID][i+direction].type == PRODUCTION_TYPE.PLACED) then
+			local destDistrictInfo = GameInfo.Districts[prodQueue[cityID][i+direction].entry.Hash];
+			local sourceDistrictInfo = GameInfo.Districts[sourceInfo.entry.Hash];
+
+			if(destDistrictInfo and sourceDistrictInfo) then
+				local pPlayer = Players[Game.GetLocalPlayer()];
+				local pCity = pPlayer:GetCities():FindID(cityID);
+				local pBuildQueue:table	= pCity:GetBuildQueue();
+
+				if (pBuildQueue:HasBeenPlaced(sourceInfo.entry.Hash) or pBuildQueue:HasBeenPlaced(prodQueue[cityID][i+direction].entry.Hash)) then
+					actualDest = i;
+					break;
+				end
+			end
 		end
 
 		if(not noMove) then
@@ -3711,6 +3737,15 @@ function ResetSelectedCityQueue()
 	local buildQueue = selectedCity:GetBuildQueue();
 	local currentProductionHash = buildQueue:GetCurrentProductionTypeHash();
 	local plotID = -1;
+
+	-- PQ: This is for notque on CivFanatics for inclusion in his multiplayer mod
+	for i,qi in pairs(prodQueue[cityID]) do
+		if(GameInfo.Districts[qi.entry.Hash]) then
+			if(buildQueue:HasBeenPlaced(qi.entry.Hash)) then
+				return;
+			end
+		end
+	end
 
 	if(prodQueue[cityID]) then prodQueue[cityID] = {}; end
 

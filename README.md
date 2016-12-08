@@ -5,7 +5,7 @@
 
 <h1>Installation</h1>
 * Download the mod and extract the contents to the Civilization VI Mods folder.
-  (OSX - /Users/<user>/Library/Application Support/Sid Meier's Civilization VI/Mods)
+  (OSX - /Users/\<userid\>/Library/Application Support/Sid Meier's Civilization VI/Mods)
 * Enable the mod in the Additional Content section of the main menu.
 
 <h1>Controls</h1>

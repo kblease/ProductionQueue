@@ -4,8 +4,10 @@
 ![Civ VI Production Queue Screenshot](http://i.imgur.com/ieaQ0iY.jpg)
 
 <h1>Installation</h1>
-* Download the mod and extract the contents to the Civilization VI Mods folder.
-  (OSX - /Users/\<userid\>/Library/Application Support/Sid Meier's Civilization VI/Mods)
+* Download the mod and extract the contents to the Civilization VI Mods folder.  
+  * Windows - C:\Users\USERNAME\Documents\My Games\Sid Meier's Civilization VI\Mods
+  * OSX - /Users/USERNAME/Library/Application Support/Sid Meier's Civilization VI/Mods
+  * Linux - /home/USERNAME/.local/share/aspyr-media/Sid Meier's Civilization VI/Mods
 * Enable the mod in the Additional Content section of the main menu.
 
 <h1>Controls</h1>

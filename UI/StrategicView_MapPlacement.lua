@@ -7,12 +7,7 @@
 -- ===========================================================================
 include("SupportFunctions.lua");
 include("AdjacencyBonusSupport.lua");
-
-local hasSummerUpdate = false;
-if(tonumber(UI.GetAppVersion():match("%((%d+)%)")) >= 296277) then
-	hasSummerUpdate = true;
-	include("PopupDialog");
-end
+include("PopupDialog");
 
 -- ===========================================================================
 --	MEMBERS
@@ -59,11 +54,7 @@ function ConfirmPlaceWonder( pInputStruct:table )
 
 			local pPopupDialog :table = {};
 
-			if(hasSummerUpdate) then
-				pPopupDialog = PopupDialogInGame:new("PlaceWonderAt_X" .. kPlot:GetX() .. "_Y" .. kPlot:GetY());
-			else
-				pPopupDialog = PopupDialog:new("PlaceWonderAt_X" .. kPlot:GetX() .. "_Y" .. kPlot:GetY());
-			end
+			pPopupDialog = PopupDialogInGame:new("PlaceWonderAt_X" .. kPlot:GetX() .. "_Y" .. kPlot:GetY());
 
 			pPopupDialog:AddText(sConfirmText);
 			pPopupDialog:AddButton(Locale.Lookup("LOC_YES"), function()
@@ -222,11 +213,7 @@ function ConfirmPlaceDistrict(pInputStruct:table)
 			local pPopupDialog :table = {};
 			print("yes")
 
-			if(hasSummerUpdate) then
-				pPopupDialog = PopupDialogInGame:new("PlaceDistrictAt_X" .. kPlot:GetX() .. "_Y" .. kPlot:GetY());
-			else
-				pPopupDialog = PopupDialog:new("PlaceDistrictAt_X" .. kPlot:GetX() .. "_Y" .. kPlot:GetY());
-			end
+			pPopupDialog = PopupDialogInGame:new("PlaceDistrictAt_X" .. kPlot:GetX() .. "_Y" .. kPlot:GetY());
 
 			pPopupDialog:AddText(sConfirmText);
 			pPopupDialog:AddButton(Locale.Lookup("LOC_YES"), function()

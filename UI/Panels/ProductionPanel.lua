@@ -88,6 +88,7 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.167" then
 	local quickRefresh = true;
 	local m_kProductionQueueDropAreas = {}; -- Required by drag and drop system
 	local lastProductionCompletePerCity = {};
+	local buildingPrereqs = {};
 	hstructure DropAreaStruct -- Lua based struct (required copy from DragSupport)
 		x		: number
 		y		: number
@@ -2362,7 +2363,6 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.167" then
 					end
 
 					local civTypeName = PlayerConfigurations[playerID]:GetCivilizationTypeName();
-
 					-- Check for unique buildings
 					for replaceRow in GameInfo.BuildingReplaces() do
 						if(replaceRow.CivUniqueBuildingType == row.BuildingType) then
@@ -2376,7 +2376,9 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.167" then
 								end
 							end
 
-							if(not isCorrectCiv) then doShow = false; end
+							if(not isCorrectCiv) then
+								doShow = false;
+							end
 						end
 
 						if(replaceRow.ReplacesBuildingType == row.BuildingType) then
@@ -2390,12 +2392,14 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.167" then
 								end
 							end
 
-							if(isCorrectCiv) then doShow = false; end
+							if(isCorrectCiv) then
+								doShow = false;
+							end
 						end
 					end
 
 					-- Check for building prereqs
-					if(GameInfo.BuildingPrereqs[row.Hash]) then
+					if(buildingPrereqs[row.BuildingType]) then
 						local prereqInQueue = false;
 
 						for prereqRow in GameInfo.BuildingPrereqs() do
@@ -2418,11 +2422,22 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.167" then
 											local modifierIDs = {};
 
 											if cityData.PantheonBelief > -1 then
-												table.insert(modifierIDs, GameInfo.BeliefModifiers[GameInfo.Beliefs[cityData.PantheonBelief].BeliefType].ModifierID);
+												local beliefType = GameInfo.Beliefs[cityData.PantheonBelief].BeliefType;
+												for belief in GameInfo.BeliefModifiers() do
+													if belief.BeliefType == beliefType then
+														table.insert(modifierIDs, belief.ModifierID);
+														break;
+													end
+												end
 											end
 											if (table.count(cityData.Religions) > 0) then
 												for _, beliefIndex in ipairs(cityData.BeliefsOfDominantReligion) do
-													table.insert(modifierIDs, GameInfo.BeliefModifiers[GameInfo.Beliefs[beliefIndex].BeliefType].ModifierID);
+													local beliefType = GameInfo.Beliefs[beliefIndex].BeliefType;
+													for belief in GameInfo.BeliefModifiers() do
+														if belief.BeliefType == beliefType then
+															table.insert(modifierIDs, belief.ModifierID);
+														end
+													end
 												end
 											end
 
@@ -3170,6 +3185,11 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.167" then
 
 			elseif(currentProductionHash == 0) then
 	 		end
+		end
+
+		-- Populate our table for building prerequisites
+		for prereqRow in GameInfo.BuildingPrereqs() do
+			buildingPrereqs[prereqRow.Building] = 1;
 		end
 	end
 
@@ -4030,7 +4050,6 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.167" then
 	--  ============================================= MODULE INITIALIZATION =====================================
 	--- =========================================================================================================
 	function Initialize()
-
 		LoadQueues();
 		Controls.PauseCollapseList:Stop();
 		Controls.PauseDismissWindow:Stop();

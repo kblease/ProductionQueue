@@ -89,6 +89,7 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.167" then
 	local m_kProductionQueueDropAreas = {}; -- Required by drag and drop system
 	local lastProductionCompletePerCity = {};
 	local buildingPrereqs = {};
+	local mutuallyExclusiveBuildings = {};
 	hstructure DropAreaStruct -- Lua based struct (required copy from DragSupport)
 		x		: number
 		y		: number
@@ -844,12 +845,16 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.167" then
 				local displayItem = true;
 
 				-- PQ: Check if this building is mutually exclusive with another
-				if(GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash]) then
-					if(IsBuildingInQueue(selectedCity, GameInfo.Buildings[GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash].MutuallyExclusiveBuilding].Hash) or pBuildings:HasBuilding(GameInfo.Buildings[GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash].MutuallyExclusiveBuilding].Index)) then
-						displayItem = false;
-						-- -- Concatenanting two fragments is not loc friendly.  This needs to change.
-						-- buildingItem.ToolTip = buildingItem.ToolTip .. "[NEWLINE][NEWLINE][COLOR:Red]" .. Locale.Lookup("LOC_UI_PEDIA_EXCLUSIVE_WITH");
-						-- buildingItem.ToolTip = buildingItem.ToolTip .. " " .. Locale.Lookup(GameInfo.Buildings[GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash].MutuallyExclusiveBuilding].Name);
+				if(mutuallyExclusiveBuildings[buildingItem.Type]) then
+					for mutuallyExclusiveBuilding in GameInfo.MutuallyExclusiveBuildings() do
+						if mutuallyExclusiveBuilding.Building == buildingItem.Type then
+							if(IsBuildingInQueue(selectedCity, GameInfo.Buildings[mutuallyExclusiveBuilding.MutuallyExclusiveBuilding].Hash) or pBuildings:HasBuilding(GameInfo.Buildings[mutuallyExclusiveBuilding.MutuallyExclusiveBuilding].Index)) then
+								displayItem = false;
+								-- -- Concatenanting two fragments is not loc friendly.  This needs to change.
+								-- buildingItem.ToolTip = buildingItem.ToolTip .. "[NEWLINE][NEWLINE][COLOR:Red]" .. Locale.Lookup("LOC_UI_PEDIA_EXCLUSIVE_WITH");
+								-- buildingItem.ToolTip = buildingItem.ToolTip .. " " .. Locale.Lookup(GameInfo.Buildings[GameInfo.MutuallyExclusiveBuildings[buildingItem.Hash].MutuallyExclusiveBuilding].Name);
+							end
+						end
 					end
 				end
 
@@ -3190,6 +3195,10 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.167" then
 		-- Populate our table for building prerequisites
 		for prereqRow in GameInfo.BuildingPrereqs() do
 			buildingPrereqs[prereqRow.Building] = 1;
+		end
+
+		for building in GameInfo.MutuallyExclusiveBuildings() do
+			mutuallyExclusiveBuildings[building.Building] = 1;
 		end
 	end
 

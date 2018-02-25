@@ -2471,6 +2471,26 @@ if string.sub(UI.GetAppVersion(),1,9) ~= "1.0.0.194" then
 					-- Check for internal only buildings
 					if(row.InternalOnly) then doShow = false end
 
+					-- Check that the player has a government of an adequate tier
+					if(row.GovernmentTierRequirement) then
+						local eSelectedPlayerGovernmentId:number = pPlayer:GetCulture():GetCurrentGovernment();
+						if eSelectedPlayerGovernmentId ~= -1 then
+							local selectedPlayerGovernment = GameInfo.Governments[eSelectedPlayerGovernmentId];
+							if(selectedPlayerGovernment.Tier) then
+								local eSelectedPlayerGovernmentTier:number = tonumber(string.sub(selectedPlayerGovernment.Tier, 5));
+								local buildingGovernmentTierRequirement:number = tonumber(string.sub(row.GovernmentTierRequirement, 5));
+
+								if(eSelectedPlayerGovernmentTier < buildingGovernmentTierRequirement) then
+									doShow = false;
+								end
+							else
+								doShow = false;
+							end
+						else
+							doShow = false;
+						end
+					end
+
 					-- Check if it's been built already
 					if(hasPrereqTech and hasPrereqCivic and isPrereqDistrictInQueue and doShow) then
 						for _, district in ipairs(cityData.BuildingsAndDistricts) do

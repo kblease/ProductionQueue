@@ -18,9 +18,9 @@ Actions when clicking an item in the "Choose Production" panel:
 * Control+Left-Click or Middle-Click: Add the item to the top of the queue.
 
 Actions when click an item in the "Production Queue" panel:
-* Left-Click and Drag: Move the item to the position when the mouse button is released. i.e. Drag and drop.
+* Left-Click and drag to new position: Move the item to the position when the mouse button is released. i.e. Drag and drop.
 * Double Left-Click or Middle-Click: Move the item to the top of the queue.
-* Right-Click: Remove the item from the queue.
+* Left-Click and drag off queue: Remove the item from the queue.
 * Hover: Reveal reserved plot of placed item (district or wonder) on the map.
 
 Instructions
@@ -40,3 +40,5 @@ In case you are curious up front which game assets have been modified, here is a
 * UI\ProductionPanel.xml
 * UI\StrategicView_MapPlacement.lua
 * UI\SupportFunctions.lua
+
+Copyright 2018 Kevin Blease. This item is not authorized for posting on Steam, except under the Steam account named kevin@thefixed.com.

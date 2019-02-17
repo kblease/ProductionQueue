@@ -5,10 +5,10 @@
 
 Installation
 ============
-* Download the mod and extract the contents to the Civilization VI Mods folder.  
-    * Windows - C:\Users\USERNAME\Documents\My Games\Sid Meier's Civilization VI\Mods  
-    * OSX - /Users/USERNAME/Library/Application Support/Sid Meier's Civilization VI/Mods  
-    * Linux - /home/USERNAME/.local/share/aspyr-media/Sid Meier's Civilization VI/Mods  
+* Download the mod and extract the contents to the Civilization VI Mods folder.
+    * Windows - C:\Users\USERNAME\Documents\My Games\Sid Meier's Civilization VI\Mods
+    * OSX - /Users/USERNAME/Library/Application Support/Sid Meier's Civilization VI/Mods
+    * Linux - /home/USERNAME/.local/share/aspyr-media/Sid Meier's Civilization VI/Mods
 * Enable the mod in the Additional Content section of the main menu.
 
 Controls
@@ -31,7 +31,7 @@ All types of production items are eligible to be added to the queue. This includ
 
 Districts and buildings that are prerequisites for other production items that are already researched (techs and civics) will unlock the next one. For example, you can queue a Commercial Hub and then immediately queue a Market if the required techs are researched. Continuing with this same example, the Market added below the Commercial Hub would be incapable of being moved ahead of it. In other words, the required order of the queue will be maintained. If you attempt to reorder an item in a way that would be impossible, it will move as far as it can before stopping. If you attempt to remove an item which is depended upon by other items below it, the removal will cascade and remove all items within the same dependency chain. In our previous example, this would mean that removing the Commercial Hub would also result in the Market being removed.
 
-Units in a city's queue which become obsolete will be automatically switched to the unit that is replacing it. In the event the unit that replaces the now obsolete unit is ineligible for production, the units will be removed from your queue. For example: Your queued Warriors are forced to become obsolete upon learning the Gunpowder tech, but the unit which replaces them is the Swordsman which requires Iron. If you do not have Iron, the Warriors will be removed from the queue rather than being upgraded to Swordsmen. 
+Units in a city's queue which become obsolete will be automatically switched to the unit that is replacing it. In the event the unit that replaces the now obsolete unit is ineligible for production, the units will be removed from your queue. For example: Your queued Warriors are forced to become obsolete upon learning the Gunpowder tech, but the unit which replaces them is the Swordsman which requires Iron. If you do not have Iron, the Warriors will be removed from the queue rather than being upgraded to Swordsmen.
 
 Altered Game Assets
 -------------------
@@ -41,4 +41,4 @@ In case you are curious up front which game assets have been modified, here is a
 * UI\StrategicView_MapPlacement.lua
 * UI\SupportFunctions.lua
 
-Copyright 2018 Kevin Blease. This item is not authorized for posting on Steam, except under the Steam account named kevin@thefixed.com.
+Copyright 2019 Kevin Blease. This item is not authorized for posting on Steam, except under the Steam account named kevin@thefixed.com.

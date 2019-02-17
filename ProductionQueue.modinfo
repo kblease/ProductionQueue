@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Mod id="2027E5A2-A48D-E606-031F-141E1196975A" version="0.1.16">
+<Mod id="2027E5A2-A48D-E606-031F-141E1196975A" version="0.1.17">
 	<Properties>
 		<Name>Production Queue</Name>
 		<Description>Adds production queues to cities.</Description>
 		<Teaser>Add production queues to cities.</Teaser>
 		<Authors>Lozenged</Authors>
+		<CompatibleVersions>2.0</CompatibleVersions>
 	</Properties>
     <Components>
         <ImportFiles id="PRODUCTION_QUEUE_IMPORT_FILES">
